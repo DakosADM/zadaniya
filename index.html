@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Задания: школа и колледж</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f2f7;--ink:#000;--muted:#5f6577;--accent:#007aff;--bad:#ff3b30;--good:#1f9d4a;--warn:#c76a00;
+--glass:rgba(255,255,255,.5);--edge:rgba(255,255,255,.75);--hi:rgba(255,255,255,.85);--in:rgba(255,255,255,.55);--sh:rgba(40,60,120,.16);
+--b1:rgba(0,122,255,.35);--b2:rgba(255,45,146,.26);--b3:rgba(52,199,89,.28);color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#000;--ink:#fff;--muted:#a0a6b8;--accent:#0a84ff;--bad:#ff6b61;--good:#5ee27a;--warn:#ffb340;
+--glass:rgba(60,60,72,.42);--edge:rgba(255,255,255,.16);--hi:rgba(255,255,255,.22);--in:rgba(255,255,255,.09);--sh:rgba(0,0,0,.5);
+--b1:rgba(10,132,255,.5);--b2:rgba(191,90,242,.4);--b3:rgba(48,209,88,.28);color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 'Onest',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100vh;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(60% 40% at 12% 8%,var(--b1),transparent 70%),radial-gradient(50% 40% at 92% 38%,var(--b2),transparent 70%),radial-gradient(60% 45% at 25% 96%,var(--b3),transparent 70%)}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 48px}
+h1,h2,h3{font-family:'Unbounded','Arial Black',sans-serif;margin:0}
+h1{font-size:24px;line-height:1.2}
+h2{font-size:19px;margin-bottom:14px}
+h3{font-size:16px;font-weight:600;line-height:1.3}
+.g{background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--edge);border-radius:26px;box-shadow:0 8px 30px var(--sh),inset 0 1.5px 0 var(--hi)}
+.card{padding:18px;margin-bottom:14px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:4px 0 18px}
+.sub{color:var(--muted);font-size:14px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--in);border:1px solid var(--edge);border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:inset 0 2px 4px rgba(0,0,0,.06)}
+textarea{min-height:90px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer;color:var(--accent);background:var(--in);border:1px solid var(--edge);border-radius:14px;padding:10px 16px;font-weight:600;box-shadow:inset 0 1px 0 var(--hi)}
+.btn{background:var(--accent);color:#fff;border-color:transparent;width:100%}
+.btn.sm{width:auto;padding:8px 14px}
+.danger{color:var(--bad)}
+.seg{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--in);border:1px solid var(--edge);margin-bottom:12px}
+.seg button{flex:1;border:none;border-radius:999px;background:transparent;box-shadow:none;color:var(--ink);padding:9px 8px}
+.seg button.on{background:var(--hi);box-shadow:0 2px 8px var(--sh)}
+.chip{display:inline-block;font-size:13px;font-weight:600;padding:3px 11px;border-radius:999px;background:var(--in);border:1px solid var(--edge);margin:0 6px 8px 0}
+.late{color:var(--bad)}.soon{color:var(--warn)}.ok{color:var(--good);font-weight:600}
+.desc{white-space:pre-wrap;margin:8px 0 12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ans{border-top:1px solid var(--edge);margin-top:10px;padding-top:10px}
+.ans p{margin:2px 0 10px;white-space:pre-wrap}
+.note{font-size:14px;color:var(--muted);padding:12px 16px;margin-bottom:14px}
+.empty{text-align:center;color:var(--muted);padding:28px 12px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:12px 18px;display:none;z-index:9;max-width:90%}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="app"></div>
+</div>
+<div id="toast" class="g"></div>
+<script>
+/* ===== НАСТРОЙКИ ===== */
+const CONFIG={
+  scriptUrl:'https://script.google.com/macros/s/AKfycbxjgjbq2swN359h4BAID-h0LPDgdKYNtHz3ToUED-OKwYVrvuBwnMcO494p5RNFEP1_pA/exec' // адрес веб-приложения Google Apps Script (пусто = демо-режим на этом устройстве)
+};
+/* ===================== */
+const live=!!CONFIG.scriptUrl;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const loc=c=>{try{return JSON.parse(LS.get('d_'+c)||'[]')}catch(e){return []}};
+const API=async b=>{const r=await fetch(CONFIG.scriptUrl,{method:'POST',body:JSON.stringify(b)});const j=await r.json();if(j.error)throw j.error;return j};
+const code=()=>(me&&me.code)||'';
+const db=live?{
+  all:()=>API({action:'all',code:code()}),
+  add:(c,o)=>API({action:'add',col:c,data:o,code:code()}),
+  del:(c,id)=>API({action:'del',col:c,id:id,code:code()}),
+  auth:c=>API({action:'auth',code:c}).then(j=>j.ok)
+}:{
+  async all(){return {groups:loc('groups'),tasks:loc('tasks'),subs:loc('subs')}},
+  async add(c,o){const a=loc(c);a.push(Object.assign({id:Date.now()+Math.random().toString(36).slice(2,6)},o));LS.set('d_'+c,JSON.stringify(a))},
+  async del(c,id){LS.set('d_'+c,JSON.stringify(loc(c).filter(x=>x.id!==id)))},
+  async auth(c){return c==='1234'}
+};
+let D={groups:[],tasks:[],subs:[]},me=null,tab='tasks',flt='',draft={role:'student'},open=new Set(),form=false,down=false;
+try{me=JSON.parse(LS.get('me')||'null')}catch(e){}
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2800)}
+async function refresh(force){
+  const a=document.activeElement;
+  if(!force&&a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
+  try{const r=await db.all();
+    D={groups:(r.groups||[]).sort((x,y)=>x.name.localeCompare(y.name,'ru')),tasks:r.tasks||[],subs:r.subs||[]};down=false}
+  catch(e){down=true}
+  render();
+}
+function fmt(d){return new Date(d+'T00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}
+function dueChip(t){
+  if(!t.due)return '';
+  const today=new Date();today.setHours(0,0,0,0);
+  const days=Math.round((new Date(t.due+'T00:00')-today)/864e5);
+  const cls=days<0?'late':days<=2?'soon':'';
+  const txt=days<0?'просрочено · '+fmt(t.due):days===0?'сегодня':'до '+fmt(t.due);
+  return '<span class="chip '+cls+'">'+txt+'</span>';
+}
+function banner(){
+  return (live?'':'<div class="g note">Демо-режим: данные хранятся только на этом устройстве. Чтобы делиться заданиями между устройствами, подключите Google Таблицу (адрес скрипта указывается в начале файла index.html). В демо-режиме код учителя: 1234.</div>')
+   +(down?'<div class="g note late">Нет связи с базой данных. Проверьте настройки и интернет.</div>':'');
+}
+function loginView(){
+  const t=draft.role==='teacher';
+  return '<div class="top"><h1>Задания</h1></div>'+banner()+
+  '<div class="g card"><h2>Вход</h2>'+
+  '<input id="nm" placeholder="Имя и фамилия" autocomplete="name" value="'+esc(draft.name||'')+'">'+
+  '<div class="seg"><button data-act="role" data-v="student" class="'+(t?'':'on')+'">Ученик</button><button data-act="role" data-v="teacher" class="'+(t?'on':'')+'">Учитель</button></div>'+
+  (t?'<input id="code" type="password" placeholder="Код учителя" autocomplete="off">'
+    :'<select id="grp"><option value="">Выберите класс или группу</option>'+D.groups.map(g=>'<option'+(draft.group===g.name?' selected':'')+'>'+esc(g.name)+'</option>').join('')+'</select>'+
+     (D.groups.length?'':'<p class="sub">Список пуст. Попросите учителя создать класс или группу.</p>'))+
+  '<button class="btn" data-act="login">Войти</button></div>';
+}
+function head(){
+  return '<div class="top"><div><h1>'+(me.role==='teacher'?'Учитель':'Ученик')+'</h1><div class="sub">'+esc(me.name)+(me.group?' · '+esc(me.group):'')+'</div></div><button data-act="logout">Выйти</button></div>';
+}
+function taskCard(t){
+  const subs=D.subs.filter(s=>s.taskId===t.id),teacher=me.role==='teacher',o=open.has(t.id);
+  let h='<div class="g card"><div><span class="chip">'+esc(t.subject||'Задание')+'</span>'+(teacher?'<span class="chip">'+esc(t.group)+'</span>':'')+dueChip(t)+'</div><h3>'+esc(t.title)+'</h3>'+
+    (t.desc?'<div class="desc">'+esc(t.desc)+'</div>':'<div style="height:10px"></div>');
+  if(teacher){
+    h+='<div class="row"><button data-act="tog" data-id="'+t.id+'">Ответы ('+subs.length+')</button><button class="danger" data-act="deltask" data-id="'+t.id+'">Удалить</button></div>';
+    if(o)h+='<div class="ans">'+(subs.length?subs.sort((a,b)=>a.created<b.created?1:-1).map(s=>'<b>'+esc(s.student)+'</b><p>'+esc(s.text)+'</p>').join(''):'<span class="sub">Пока никто не сдал</span>')+'</div>';
+  }else{
+    const mine=subs.find(s=>s.student===me.name);
+    if(mine)h+='<div class="ok">Сдано ✓</div>';
+    else if(o)h+='<textarea id="a-'+t.id+'" placeholder="Ваш ответ или ссылка на работу"></textarea><div class="row"><button class="btn sm" data-act="send" data-id="'+t.id+'">Отправить</button><button data-act="tog" data-id="'+t.id+'">Отмена</button></div>';
+    else h+='<button data-act="tog" data-id="'+t.id+'">Сдать ответ</button>';
+  }
+  return h+'</div>';
+}
+function sortTasks(a){return a.sort((x,y)=>(x.due||'9999')<(y.due||'9999')?-1:1)}
+function studentView(){
+  const L=sortTasks(D.tasks.filter(t=>t.group===me.group));
+  return head()+banner()+(L.length?L.map(taskCard).join(''):'<div class="g empty">Для вашей группы пока нет заданий</div>');
+}
+function teacherView(){
+  const seg='<div class="seg"><button data-act="tab" data-v="tasks" class="'+(tab==='tasks'?'on':'')+'">Задания</button><button data-act="tab" data-v="groups" class="'+(tab==='groups'?'on':'')+'">Классы и группы</button></div>';
+  if(tab==='groups'){
+    return head()+banner()+seg+'<div class="g card"><h2>Новый класс или группа</h2><input id="gn" placeholder="Например: 10А или ИС-21"><button class="btn" data-act="addgroup">Создать</button></div>'+
+      (D.groups.length?D.groups.map(g=>'<div class="g card row" style="justify-content:space-between"><div><h3>'+esc(g.name)+'</h3><div class="sub">Заданий: '+D.tasks.filter(t=>t.group===g.name).length+'</div></div><button class="danger" data-act="delgroup" data-id="'+g.id+'">Удалить</button></div>').join(''):'<div class="g empty">Классов пока нет</div>');
+  }
+  const opts=D.groups.map(g=>'<option>'+esc(g.name)+'</option>').join('');
+  const L=sortTasks(D.tasks.filter(t=>!flt||t.group===flt));
+  return head()+banner()+seg+
+  '<button class="btn" data-act="form" style="margin-bottom:14px">'+(form?'Скрыть форму':'+ Новое задание')+'</button>'+
+  (form?'<div class="g card"><select id="t-g"><option value="">Для кого: класс или группа</option>'+opts+'</select><input id="t-s" placeholder="Предмет"><input id="t-t" placeholder="Название задания"><textarea id="t-d" placeholder="Описание, что нужно сделать"></textarea><label class="sub">Срок сдачи</label><input id="t-u" type="date"><button class="btn" data-act="addtask">Опубликовать</button></div>':'')+
+  '<select id="flt"><option value="">Все классы и группы</option>'+D.groups.map(g=>'<option'+(flt===g.name?' selected':'')+'>'+esc(g.name)+'</option>').join('')+'</select>'+
+  (L.length?L.map(taskCard).join(''):'<div class="g empty">Заданий пока нет</div>');
+}
+function render(){$('#app').innerHTML=me?(me.role==='teacher'?teacherView():studentView()):loginView()}
+document.addEventListener('change',e=>{if(e.target.id==='flt'){flt=e.target.value;render()}});
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act,id=b.dataset.id,v=b.dataset.v,val=i=>(($(i)||{}).value||'').trim();
+  try{
+    if(a==='role'){draft.name=val('#nm');draft.role=v;render()}
+    else if(a==='login'){
+      const name=val('#nm');if(name.length<2)return toast('Введите имя и фамилию');
+      if(draft.role==='teacher'){const c=val('#code');toast('Проверка кода…');if(!(await db.auth(c)))return toast('Неверный код учителя');me={name,role:'teacher',code:c}}
+      else{const g=($('#grp')||{}).value;if(!g)return toast('Выберите класс или группу');me={name,role:'student',group:g}}
+      LS.set('me',JSON.stringify(me));render()
+    }
+    else if(a==='logout'){me=null;draft={role:'student'};LS.set('me','null');render()}
+    else if(a==='tab'){tab=v;render()}
+    else if(a==='form'){form=!form;render()}
+    else if(a==='tog'){open.has(id)?open.delete(id):open.add(id);render()}
+    else if(a==='send'){
+      const text=val('#a-'+id);if(!text)return toast('Напишите ответ');
+      await db.add('subs',{taskId:id,student:me.name,group:me.group,text,created:new Date().toISOString()});open.delete(id);toast('Ответ отправлен');await refresh(true)
+    }
+    else if(a==='addtask'){
+      const g=($('#t-g')||{}).value,title=val('#t-t');
+      if(!g||!title)return toast('Укажите класс или группу и название');
+      await db.add('tasks',{group:g,subject:val('#t-s'),title,desc:val('#t-d'),due:val('#t-u'),created:new Date().toISOString()});
+      form=false;toast('Задание опубликовано');await refresh(true)
+    }
+    else if(a==='deltask'){if(confirm('Удалить задание?')){await db.del('tasks',id);await refresh(true)}}
+    else if(a==='addgroup'){
+      const n=val('#gn');if(!n)return toast('Введите название');
+      if(D.groups.some(g=>g.name===n))return toast('Такая группа уже есть');
+      await db.add('groups',{name:n});await refresh(true)
+    }
+    else if(a==='delgroup'){if(confirm('Удалить класс или группу? Задания останутся в базе.')){await db.del('groups',id);await refresh(true)}}
+  }catch(err){toast(err==='forbidden'?'Нет прав. Выйдите и войдите с верным кодом учителя':'Не удалось выполнить действие. Проверьте связь.')}
+});
+render();refresh(true);setInterval(()=>{if(!document.hidden)refresh()},60000);
+</script>
+</body>
+</html>
