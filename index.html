@@ -33,156 +33,171 @@ button{font:inherit;cursor:pointer;color:var(--accent);background:var(--in);bord
 .btn.sm{width:auto;padding:8px 14px}
 .danger{color:var(--bad)}
 .seg{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--in);border:1px solid var(--edge);margin-bottom:12px}
-.seg button{flex:1;border:none;border-radius:999px;background:transparent;box-shadow:none;color:var(--ink);padding:9px 8px}
+.seg button{flex:1;border:none;border-radius:999px;background:transparent;box-shadow:none;color:var(--ink);padding:9px 8px;white-space:nowrap}
 .seg button.on{background:var(--hi);box-shadow:0 2px 8px var(--sh)}
 .chip{display:inline-block;font-size:13px;font-weight:600;padding:3px 11px;border-radius:999px;background:var(--in);border:1px solid var(--edge);margin:0 6px 8px 0}
 .late{color:var(--bad)}.soon{color:var(--warn)}.ok{color:var(--good);font-weight:600}
 .desc{white-space:pre-wrap;margin:8px 0 12px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.between{justify-content:space-between}
 .ans{border-top:1px solid var(--edge);margin-top:10px;padding-top:10px}
 .ans p{margin:2px 0 10px;white-space:pre-wrap}
 .note{font-size:14px;color:var(--muted);padding:12px 16px;margin-bottom:14px}
 .empty{text-align:center;color:var(--muted);padding:28px 12px}
+.cred{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;margin:0 0 6px;word-break:break-all}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:12px 18px;display:none;z-index:9;max-width:90%}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div id="app"></div>
-</div>
+<div class="wrap"><div id="app"></div></div>
 <div id="toast" class="g"></div>
 <script>
-/* ===== НАСТРОЙКИ ===== */
-const CONFIG={
-  scriptUrl:'https://script.google.com/macros/s/AKfycbxjgjbq2swN359h4BAID-h0LPDgdKYNtHz3ToUED-OKwYVrvuBwnMcO494p5RNFEP1_pA/exec' // адрес веб-приложения Google Apps Script (пусто = демо-режим на этом устройстве)
-};
-/* ===================== */
-const live=!!CONFIG.scriptUrl;
+const CONFIG={scriptUrl:'https://script.google.com/macros/s/AKfycbxjgjbq2swN359h4BAID-h0LPDgdKYNtHz3ToUED-OKwYVrvuBwnMcO494p5RNFEP1_pA/exec'};
 const $=s=>document.querySelector(s);
+const val=s=>(($(s)||{}).value||'').trim();
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
-const loc=c=>{try{return JSON.parse(LS.get('d_'+c)||'[]')}catch(e){return []}};
-const API=async b=>{const r=await fetch(CONFIG.scriptUrl,{method:'POST',body:JSON.stringify(b)});const j=await r.json();if(j.error)throw j.error;return j};
-const code=()=>(me&&me.code)||'';
-const db=live?{
-  all:()=>API({action:'all',code:code()}),
-  add:(c,o)=>API({action:'add',col:c,data:o,code:code()}),
-  del:(c,id)=>API({action:'del',col:c,id:id,code:code()}),
-  auth:c=>API({action:'auth',code:c}).then(j=>j.ok)
-}:{
-  async all(){return {groups:loc('groups'),tasks:loc('tasks'),subs:loc('subs')}},
-  async add(c,o){const a=loc(c);a.push(Object.assign({id:Date.now()+Math.random().toString(36).slice(2,6)},o));LS.set('d_'+c,JSON.stringify(a))},
-  async del(c,id){LS.set('d_'+c,JSON.stringify(loc(c).filter(x=>x.id!==id)))},
-  async auth(c){return c==='1234'}
-};
-let D={groups:[],tasks:[],subs:[]},me=null,tab='tasks',flt='',draft={role:'student'},open=new Set(),form=false,down=false;
-try{me=JSON.parse(LS.get('me')||'null')}catch(e){}
-function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2800)}
+let D={groups:[],tasks:[],subs:[],users:[]},me=null,tab='tasks',flt='',open=new Set(),form=false,down=false,urole='student',created=[];
+try{me=JSON.parse(LS.get('me2')||'null')}catch(e){}
+const API=async(b,c)=>{c=c||me||{};
+  const r=await fetch(CONFIG.scriptUrl,{method:'POST',body:JSON.stringify(Object.assign({login:c.login,pass:c.pass},b))});
+  const j=await r.json();if(j.error)throw j.error;return j};
+function toast(t){const e=$('#toast');if(!t){e.style.display='none';return}e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2800)}
+const TR={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ы:'y',э:'e',ю:'yu',я:'ya'};
+const tr=s=>s.toLowerCase().split('').map(c=>TR[c]!==undefined?TR[c]:(/[a-z0-9]/.test(c)?c:'')).join('');
+function mkLogin(n){const w=n.trim().split(/\s+/);const a=tr(w[0]||''),b=tr(w[1]||'');return (a||'user')+(b?'.'+b[0]:'')}
+function mkPass(){const ch='abcdefghjkmnpqrstuvwxyz23456789',a=new Uint32Array(7);crypto.getRandomValues(a);return Array.from(a,x=>ch[x%ch.length]).join('')}
 async function refresh(force){
+  if(!me)return render();
   const a=document.activeElement;
   if(!force&&a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
-  try{const r=await db.all();
-    D={groups:(r.groups||[]).sort((x,y)=>x.name.localeCompare(y.name,'ru')),tasks:r.tasks||[],subs:r.subs||[]};down=false}
-  catch(e){down=true}
+  try{const r=await API({action:'all'});
+    D={groups:(r.groups||[]).sort((x,y)=>x.name.localeCompare(y.name,'ru')),tasks:r.tasks||[],subs:r.subs||[],users:r.users||[]};down=false}
+  catch(e){if(e==='auth'){logout();toast('Логин или пароль больше не действует');return}down=true}
   render();
 }
+function logout(){me=null;LS.set('me2','null');created=[];render()}
 function fmt(d){return new Date(d+'T00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}
 function dueChip(t){
   if(!t.due)return '';
   const today=new Date();today.setHours(0,0,0,0);
   const days=Math.round((new Date(t.due+'T00:00')-today)/864e5);
   const cls=days<0?'late':days<=2?'soon':'';
-  const txt=days<0?'просрочено · '+fmt(t.due):days===0?'сегодня':'до '+fmt(t.due);
-  return '<span class="chip '+cls+'">'+txt+'</span>';
+  return '<span class="chip '+cls+'">'+(days<0?'просрочено · '+fmt(t.due):days===0?'сегодня':'до '+fmt(t.due))+'</span>';
 }
-function banner(){
-  return (live?'':'<div class="g note">Демо-режим: данные хранятся только на этом устройстве. Чтобы делиться заданиями между устройствами, подключите Google Таблицу (адрес скрипта указывается в начале файла index.html). В демо-режиме код учителя: 1234.</div>')
-   +(down?'<div class="g note late">Нет связи с базой данных. Проверьте настройки и интернет.</div>':'');
-}
+function banner(){return down?'<div class="g note late">Нет связи с базой данных. Проверьте интернет.</div>':''}
 function loginView(){
-  const t=draft.role==='teacher';
-  return '<div class="top"><h1>Задания</h1></div>'+banner()+
-  '<div class="g card"><h2>Вход</h2>'+
-  '<input id="nm" placeholder="Имя и фамилия" autocomplete="name" value="'+esc(draft.name||'')+'">'+
-  '<div class="seg"><button data-act="role" data-v="student" class="'+(t?'':'on')+'">Ученик</button><button data-act="role" data-v="teacher" class="'+(t?'on':'')+'">Учитель</button></div>'+
-  (t?'<input id="code" type="password" placeholder="Код учителя" autocomplete="off">'
-    :'<select id="grp"><option value="">Выберите класс или группу</option>'+D.groups.map(g=>'<option'+(draft.group===g.name?' selected':'')+'>'+esc(g.name)+'</option>').join('')+'</select>'+
-     (D.groups.length?'':'<p class="sub">Список пуст. Попросите учителя создать класс или группу.</p>'))+
-  '<button class="btn" data-act="login">Войти</button></div>';
+  return '<div class="top"><h1>Задания</h1></div><div class="g card"><h2>Вход</h2>'+
+  '<input id="lg" placeholder="Логин" autocomplete="username" autocapitalize="none" spellcheck="false">'+
+  '<input id="ps" type="password" placeholder="Пароль" autocomplete="current-password">'+
+  '<button class="btn" data-act="login">Войти</button><p class="sub" style="margin:12px 0 0">Логин и пароль выдаёт администратор.</p></div>';
 }
+const ROLE={admin:'Администратор',teacher:'Учитель',student:'Ученик'};
 function head(){
-  return '<div class="top"><div><h1>'+(me.role==='teacher'?'Учитель':'Ученик')+'</h1><div class="sub">'+esc(me.name)+(me.group?' · '+esc(me.group):'')+'</div></div><button data-act="logout">Выйти</button></div>';
+  return '<div class="top"><div><h1>'+ROLE[me.role]+'</h1><div class="sub">'+esc(me.name)+(me.group?' · '+esc(me.group):'')+'</div></div><button data-act="logout">Выйти</button></div>';
 }
 function taskCard(t){
-  const subs=D.subs.filter(s=>s.taskId===t.id),teacher=me.role==='teacher',o=open.has(t.id);
-  let h='<div class="g card"><div><span class="chip">'+esc(t.subject||'Задание')+'</span>'+(teacher?'<span class="chip">'+esc(t.group)+'</span>':'')+dueChip(t)+'</div><h3>'+esc(t.title)+'</h3>'+
+  const subs=D.subs.filter(s=>s.taskId===t.id),tch=me.role!=='student',o=open.has(t.id);
+  let h='<div class="g card"><div><span class="chip">'+esc(t.subject||'Задание')+'</span>'+(tch?'<span class="chip">'+esc(t.group)+'</span>':'')+dueChip(t)+'</div><h3>'+esc(t.title)+'</h3>'+
     (t.desc?'<div class="desc">'+esc(t.desc)+'</div>':'<div style="height:10px"></div>');
-  if(teacher){
+  if(tch){
     h+='<div class="row"><button data-act="tog" data-id="'+t.id+'">Ответы ('+subs.length+')</button><button class="danger" data-act="deltask" data-id="'+t.id+'">Удалить</button></div>';
-    if(o)h+='<div class="ans">'+(subs.length?subs.sort((a,b)=>a.created<b.created?1:-1).map(s=>'<b>'+esc(s.student)+'</b><p>'+esc(s.text)+'</p>').join(''):'<span class="sub">Пока никто не сдал</span>')+'</div>';
+    if(o)h+='<div class="ans">'+(subs.length?subs.slice().sort((a,b)=>a.created<b.created?1:-1).map(s=>'<b>'+esc(s.student)+'</b><p>'+esc(s.text)+'</p>').join(''):'<span class="sub">Пока никто не сдал</span>')+'</div>';
   }else{
-    const mine=subs.find(s=>s.student===me.name);
-    if(mine)h+='<div class="ok">Сдано ✓</div>';
+    if(subs.length)h+='<div class="ok">Сдано ✓</div>';
     else if(o)h+='<textarea id="a-'+t.id+'" placeholder="Ваш ответ или ссылка на работу"></textarea><div class="row"><button class="btn sm" data-act="send" data-id="'+t.id+'">Отправить</button><button data-act="tog" data-id="'+t.id+'">Отмена</button></div>';
     else h+='<button data-act="tog" data-id="'+t.id+'">Сдать ответ</button>';
   }
   return h+'</div>';
 }
-function sortTasks(a){return a.sort((x,y)=>(x.due||'9999')<(y.due||'9999')?-1:1)}
+const byDue=a=>a.sort((x,y)=>(x.due||'9999')<(y.due||'9999')?-1:1);
 function studentView(){
-  const L=sortTasks(D.tasks.filter(t=>t.group===me.group));
+  const L=byDue(D.tasks.slice());
   return head()+banner()+(L.length?L.map(taskCard).join(''):'<div class="g empty">Для вашей группы пока нет заданий</div>');
 }
+function usersTab(){
+  const gs='<select id="u-g"><option value="">Группа ученика</option>'+D.groups.map(g=>'<option>'+esc(g.name)+'</option>').join('')+'</select>';
+  let h='<div class="g card"><h2>Новые кабинеты</h2><div class="seg"><button data-act="urole" data-v="student" class="'+(urole==='student'?'on':'')+'">Ученики</button><button data-act="urole" data-v="teacher" class="'+(urole==='teacher'?'on':'')+'">Учителя</button></div>'+
+   (urole==='student'?gs:'')+'<textarea id="u-n" placeholder="Имя и фамилия, по одному в строке"></textarea><button class="btn" data-act="mkusers">Создать</button></div>';
+  if(created.length)h+='<div class="g card"><h2>Данные для входа</h2><p class="sub">Пароли видны только сейчас. Сохраните или скопируйте их.</p>'+created.map(c=>'<p class="cred">'+esc(c.name)+' — логин: <b>'+esc(c.login)+'</b>, пароль: <b>'+esc(c.password)+'</b></p>').join('')+'<div class="row"><button data-act="copy">Копировать</button><button data-act="closecr">Закрыть</button></div></div>';
+  const U=D.users.slice().sort((a,b)=>(a.role===b.role?0:a.role==='teacher'?-1:1)||(a.group||'').localeCompare(b.group||'','ru')||a.name.localeCompare(b.name,'ru'));
+  return h+(U.length?U.map(u=>'<div class="g card"><div class="row between"><div><h3>'+esc(u.name)+'</h3><div class="sub">'+(u.role==='teacher'?'Учитель':'Ученик · '+esc(u.group))+' · логин '+esc(u.login)+'</div></div><div class="row"><button data-act="setpass" data-id="'+u.id+'">Новый пароль</button><button class="danger" data-act="deluser" data-id="'+u.id+'">Удалить</button></div></div></div>').join(''):'<div class="g empty">Пользователей пока нет</div>');
+}
 function teacherView(){
-  const seg='<div class="seg"><button data-act="tab" data-v="tasks" class="'+(tab==='tasks'?'on':'')+'">Задания</button><button data-act="tab" data-v="groups" class="'+(tab==='groups'?'on':'')+'">Классы и группы</button></div>';
-  if(tab==='groups'){
-    return head()+banner()+seg+'<div class="g card"><h2>Новый класс или группа</h2><input id="gn" placeholder="Например: 10А или ИС-21"><button class="btn" data-act="addgroup">Создать</button></div>'+
-      (D.groups.length?D.groups.map(g=>'<div class="g card row" style="justify-content:space-between"><div><h3>'+esc(g.name)+'</h3><div class="sub">Заданий: '+D.tasks.filter(t=>t.group===g.name).length+'</div></div><button class="danger" data-act="delgroup" data-id="'+g.id+'">Удалить</button></div>').join(''):'<div class="g empty">Классов пока нет</div>');
-  }
+  const adm=me.role==='admin';if(tab==='users'&&!adm)tab='tasks';
+  const seg='<div class="seg"><button data-act="tab" data-v="tasks" class="'+(tab==='tasks'?'on':'')+'">Задания</button><button data-act="tab" data-v="groups" class="'+(tab==='groups'?'on':'')+'">Группы</button>'+(adm?'<button data-act="tab" data-v="users" class="'+(tab==='users'?'on':'')+'">Люди</button>':'')+'</div>';
+  if(tab==='users')return head()+banner()+seg+usersTab();
+  if(tab==='groups')return head()+banner()+seg+'<div class="g card"><h2>Новый класс или группа</h2><input id="gn" placeholder="Например: 10А или ИС-21"><button class="btn" data-act="addgroup">Создать</button></div>'+
+    (D.groups.length?D.groups.map(g=>'<div class="g card row between"><div><h3>'+esc(g.name)+'</h3><div class="sub">Заданий: '+D.tasks.filter(t=>t.group===g.name).length+'</div></div><button class="danger" data-act="delgroup" data-id="'+g.id+'">Удалить</button></div>').join(''):'<div class="g empty">Групп пока нет</div>');
   const opts=D.groups.map(g=>'<option>'+esc(g.name)+'</option>').join('');
-  const L=sortTasks(D.tasks.filter(t=>!flt||t.group===flt));
+  const L=byDue(D.tasks.filter(t=>!flt||t.group===flt));
   return head()+banner()+seg+
   '<button class="btn" data-act="form" style="margin-bottom:14px">'+(form?'Скрыть форму':'+ Новое задание')+'</button>'+
   (form?'<div class="g card"><select id="t-g"><option value="">Для кого: класс или группа</option>'+opts+'</select><input id="t-s" placeholder="Предмет"><input id="t-t" placeholder="Название задания"><textarea id="t-d" placeholder="Описание, что нужно сделать"></textarea><label class="sub">Срок сдачи</label><input id="t-u" type="date"><button class="btn" data-act="addtask">Опубликовать</button></div>':'')+
   '<select id="flt"><option value="">Все классы и группы</option>'+D.groups.map(g=>'<option'+(flt===g.name?' selected':'')+'>'+esc(g.name)+'</option>').join('')+'</select>'+
   (L.length?L.map(taskCard).join(''):'<div class="g empty">Заданий пока нет</div>');
 }
-function render(){$('#app').innerHTML=me?(me.role==='teacher'?teacherView():studentView()):loginView()}
+function render(){$('#app').innerHTML=!me?loginView():me.role==='student'?studentView():teacherView()}
+async function doLogin(){
+  const login=val('#lg').toLowerCase(),pass=($('#ps')||{}).value||'';
+  if(!login||!pass)return toast('Введите логин и пароль');
+  toast('Проверка…');
+  try{const r=await API({action:'login'},{login,pass});
+    me={login,pass,role:r.role,name:r.name,group:r.group};LS.set('me2',JSON.stringify(me));toast('');await refresh(true)}
+  catch(e){toast(e==='auth'?'Неверный логин или пароль':'Нет связи с базой')}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!me&&e.target.tagName==='INPUT')doLogin()});
 document.addEventListener('change',e=>{if(e.target.id==='flt'){flt=e.target.value;render()}});
 document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
-  const a=b.dataset.act,id=b.dataset.id,v=b.dataset.v,val=i=>(($(i)||{}).value||'').trim();
+  const a=b.dataset.act,id=b.dataset.id,v=b.dataset.v;
   try{
-    if(a==='role'){draft.name=val('#nm');draft.role=v;render()}
-    else if(a==='login'){
-      const name=val('#nm');if(name.length<2)return toast('Введите имя и фамилию');
-      if(draft.role==='teacher'){const c=val('#code');toast('Проверка кода…');if(!(await db.auth(c)))return toast('Неверный код учителя');me={name,role:'teacher',code:c}}
-      else{const g=($('#grp')||{}).value;if(!g)return toast('Выберите класс или группу');me={name,role:'student',group:g}}
-      LS.set('me',JSON.stringify(me));render()
-    }
-    else if(a==='logout'){me=null;draft={role:'student'};LS.set('me','null');render()}
+    if(a==='login')await doLogin();
+    else if(a==='logout')logout();
     else if(a==='tab'){tab=v;render()}
     else if(a==='form'){form=!form;render()}
     else if(a==='tog'){open.has(id)?open.delete(id):open.add(id);render()}
+    else if(a==='urole'){urole=v;render()}
     else if(a==='send'){
       const text=val('#a-'+id);if(!text)return toast('Напишите ответ');
-      await db.add('subs',{taskId:id,student:me.name,group:me.group,text,created:new Date().toISOString()});open.delete(id);toast('Ответ отправлен');await refresh(true)
+      await API({action:'add',col:'subs',data:{taskId:id,text}});open.delete(id);toast('Ответ отправлен');await refresh(true)
     }
     else if(a==='addtask'){
       const g=($('#t-g')||{}).value,title=val('#t-t');
       if(!g||!title)return toast('Укажите класс или группу и название');
-      await db.add('tasks',{group:g,subject:val('#t-s'),title,desc:val('#t-d'),due:val('#t-u'),created:new Date().toISOString()});
+      await API({action:'add',col:'tasks',data:{group:g,subject:val('#t-s'),title,desc:val('#t-d'),due:val('#t-u'),created:new Date().toISOString()}});
       form=false;toast('Задание опубликовано');await refresh(true)
     }
-    else if(a==='deltask'){if(confirm('Удалить задание?')){await db.del('tasks',id);await refresh(true)}}
+    else if(a==='deltask'){if(confirm('Удалить задание?')){await API({action:'del',col:'tasks',id});await refresh(true)}}
     else if(a==='addgroup'){
       const n=val('#gn');if(!n)return toast('Введите название');
       if(D.groups.some(g=>g.name===n))return toast('Такая группа уже есть');
-      await db.add('groups',{name:n});await refresh(true)
+      await API({action:'add',col:'groups',data:{name:n}});await refresh(true)
     }
-    else if(a==='delgroup'){if(confirm('Удалить класс или группу? Задания останутся в базе.')){await db.del('groups',id);await refresh(true)}}
-  }catch(err){toast(err==='forbidden'?'Нет прав. Выйдите и войдите с верным кодом учителя':'Не удалось выполнить действие. Проверьте связь.')}
+    else if(a==='delgroup'){if(confirm('Удалить группу? Задания останутся в базе.')){await API({action:'del',col:'groups',id});await refresh(true)}}
+    else if(a==='mkusers'){
+      const names=val('#u-n').split('\n').map(x=>x.trim()).filter(Boolean),g=($('#u-g')||{}).value;
+      if(!names.length)return toast('Введите хотя бы одно имя');
+      if(urole==='student'&&!g)return toast('Выберите группу');
+      toast('Создаю…');
+      const r=await API({action:'adduser',users:names.map(n=>({name:n,role:urole,group:g||'',login:mkLogin(n),password:mkPass()}))});
+      created=r.created;toast('Готово');await refresh(true);window.scrollTo(0,0)
+    }
+    else if(a==='setpass'){
+      const u=D.users.find(x=>x.id===id),pw=mkPass();
+      if(!confirm('Сменить пароль для '+u.name+'?'))return;
+      await API({action:'setpass',id,password:pw});created=[{name:u.name,login:u.login,password:pw}];render();window.scrollTo(0,0)
+    }
+    else if(a==='deluser'){if(confirm('Удалить пользователя?')){await API({action:'del',col:'users',id});await refresh(true)}}
+    else if(a==='copy'){
+      navigator.clipboard.writeText(created.map(c=>c.name+' — логин: '+c.login+', пароль: '+c.password).join('\n')).then(()=>toast('Скопировано'),()=>toast('Не удалось скопировать'))
+    }
+    else if(a==='closecr'){created=[];render()}
+  }catch(err){
+    if(err==='auth'){logout();toast('Войдите заново')}
+    else toast(err==='forbidden'?'Недостаточно прав':err==='exists'?'Логин уже занят':'Не удалось выполнить действие. Проверьте связь.')
+  }
 });
 render();refresh(true);setInterval(()=>{if(!document.hidden)refresh()},60000);
 </script>
